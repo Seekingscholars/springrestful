@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd">
+
+	<bean id="activeMQConnectionFactory" class="org.apache.activemq.ActiveMQConnectionFactory">
+		<property name="brokerURL" value="${activemq1.brokerURL}"></property>
+		<!-- <property name="useAsyncSend" value="false"></property> <property 
+			name="dispatchAsync" value="false"></property> -->
+	</bean>
+	
+	<!-- Spring JMS Template -->
+	<bean id="jmsTemplate" class="org.springframework.jms.core.JmsTemplate">
+		<property name="connectionFactory">
+			<!-- lets wrap in a pool to avoid creating a connection per send -->
+			<bean class="org.springframework.jms.connection.SingleConnectionFactory">
+				<property name="targetConnectionFactory" ref="activeMQConnectionFactory" />
+			</bean>
+		</property>
+	</bean>
+	
+	<!-- ***************************************** 生产者 ********************************************* -->
+	
+	<!-- 任务消息生产者 -->
+	<bean id="testBeanMsgProducer" class="com.swan.offlineinvoicing.common.jms.MessageProducer">
+		<property name="template" ref="jmsTemplate"/>
+		<property name="destination" ref="testBeanMsgDestination"/>
+	</bean>
+	
+	<!-- 讨论消息生产者 -->
+	<!-- <bean id="sendDiscussMsgProducer" class="com.swan.offlineinvoicing.common.jms.MessageProducer">
+		<property name="template" ref="jmsTemplate"/>
+		<property name="destination" ref="sendDiscussMsgDestination"/>
+	</bean> -->
+
+	<!-- ***************************************** 队列 ********************************************* -->
+	
+	<!-- 任务消息队列 -->
+	<bean id="testBeanMsgDestination" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg index="0" value="send-taskmsg-queue" />
+	</bean>
+	
+	<!-- 讨论消息队列 -->
+	<!-- <bean id="sendDiscussMsgDestination" class="org.apache.activemq.command.ActiveMQQueue">
+		<constructor-arg index="0" value="send-discussmsg-queue" />
+	</bean> -->
+	  
+	<!-- ================================== listener消息处理 ===================================== -->
+	
+	<!-- 任务消息处理 -->
+	<bean
+		class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+		<property name="connectionFactory" ref="activeMQConnectionFactory" />
+		<property name="destination" ref="testBeanMsgDestination" />
+		<property name="messageListener">
+			<bean
+				class="org.springframework.jms.listener.adapter.MessageListenerAdapter">
+				<constructor-arg>
+					<ref bean="testBeanMsgConsumer"/>
+				</constructor-arg>
+				<property name="defaultListenerMethod" value="handleMessage" />
+				<!-- <property name="messageConverter" ref="messageConverter" /> -->
+			</bean>
+		</property>
+		<property name="maxConcurrentConsumers" value="5"></property>
+	</bean>
+	
+	
+	<!-- 讨论消息处理 -->
+	<!-- <bean
+		class="org.springframework.jms.listener.DefaultMessageListenerContainer">
+		<property name="connectionFactory" ref="activeMQConnectionFactory" />
+		<property name="destination" ref="sendDiscussMsgDestination" />
+		<property name="messageListener">
+			<bean
+				class="org.springframework.jms.listener.adapter.MessageListenerAdapter">
+				<constructor-arg>
+					<ref bean="discussMsgConsumer"/>
+				</constructor-arg>
+				<property name="defaultListenerMethod" value="handleMessage" />
+				<property name="messageConverter" ref="messageConverter" />
+			</bean>
+		</property>
+		<property name="maxConcurrentConsumers" value="15"></property>
+	</bean> -->			
+	
+	<!-- ***************************************** 消费者 ********************************************* -->	
+	
+	<!-- 
+	<bean id="pushMsgBase" class="com.weqia.component.pushMsg.consumer.PushMsgBaseConsumer" abstract="true">
+	</bean>
+	-->
+	
+	<!-- 基础 -->
+	<!-- 
+	<bean id="testBeanPushMsg" class="com.weqia.component.pushMsg.consumer.AbstractMultipleMsgConsumer" parent="pushMsgBase" abstract="true">
+	</bean>
+	 -->
+	
+	<!-- 任务消息消费者 -->
+	<bean id="testBeanMsgConsumer" class="com.swan.offlineinvoicing.auth.consumer.TestBeanMsgConsumer" >
+	</bean>
+	
+	<!-- 讨论消息消费者 -->
+	<!-- 
+	<bean id="discussMsgConsumer" class="com.weqia.component.pushMsg.consumer.DiscussMsgConsumer" parent="discussPushMsg">
+	</bean>
+	 -->
+	
+</beans>
+
+
